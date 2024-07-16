@@ -1,0 +1,42 @@
+import pandas as pd
+import numpy as np
+import torch
+import torch.nn as nn
+from torch.utils.data import TensorDataset, DataLoader
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+import statsmodels.api as sm
+from statsmodels.tsa.arima.model import ARIMA
+from scipy.optimize import curve_fit
+import math
+
+# Load data
+df = pd.read_csv('airline-passengers.csv')
+timeseries = df[["Passengers"]].values.astype('float32')
+
+# Train-test split
+train_size = int(len(timeseries) * 0.67)
+test_size = len(timeseries) - train_size
+train, test = timeseries[:train_size], timeseries[train_size:]
+
+def create_dataset(dataset, lookback):
+    X, y = [], []
+    for i in range(len(dataset)-lookback):
+        features = dataset[i:i+lookback]
+        features = np.array([float(array[0]) for array in features])
+        target = dataset[i+lookback:i+lookback+1][0][0]
+        X.append(features)
+        y.append(target)      
+    return torch.tensor(np.array(X).astype(np.float32)), torch.tensor(np.array(y))
+lookback = 14
+X_train, y_train = create_dataset(train, lookback=lookback)
+X_test, y_test = create_dataset(test, lookback=lookback)
+
+
+
+p=24;d=2;q=0
+arima_model = ARIMA(train, order=(p,d,q))
+arima_model = arima_model.fit()
+arima_train = arima_model.predict(start=lookback + 1, end=len(train), typ='levels')   
+start_test = len(train) + lookback + 1
+arima_test = arima_model.predict(start=start_test, end= len(train) + len(test)+100, typ='levels')  
+arr = np.concatenate((arima_train, arima_test))
