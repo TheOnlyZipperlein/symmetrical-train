@@ -2,3 +2,4 @@ hite_items/
 .venv/
 statistics/
 .env
+.refactor/
